@@ -1,0 +1,18 @@
+Start:  AIC=580.41
+as.numeric(temp.midpoints) ~ brackishOTUPD$freshRestricted
+
+                                Df Sum of Sq    RSS    AIC
+- brackishOTUPD$freshRestricted  1    23.301 7440.5 578.87
+<none>                                       7417.2 580.41
+
+Step:  AIC=578.87
+as.numeric(temp.midpoints) ~ 1
+
+
+Call:
+lm(formula = as.numeric(temp.midpoints) ~ 1)
+
+Coefficients:
+(Intercept)  
+       15.2  
+

@@ -1,0 +1,5 @@
+"x"
+"1" " D_6__uncultured bacterium D_5__Rhodoferax(FJ382072.1.1204)"
+"2" " D_6__metagenome D_5__Polaromonas(FPLS01061677.1.1233)"
+"3" " D_6__Staphylococcus epidermidis D_5__Staphylococcus(KY608105.1.1200)"
+"4" " D_6__uncultured bacterium D_5__Limnohabitans(DQ017936.1.1486)"

@@ -1,0 +1,4 @@
+"x"
+"1" " D_6__uncultured gamma proteobacterium D_5__uncultured gamma proteobacterium(GQ350231.1.1372)"
+"2" " D_6__uncultured bacterium D_5__Rhodoferax(FJ382072.1.1204)"
+"3" " D_6__uncultured bacterium D_5__NS4 marine group(JX525782.1.1434)"
