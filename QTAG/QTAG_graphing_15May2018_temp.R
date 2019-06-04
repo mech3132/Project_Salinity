@@ -17,7 +17,7 @@ option_list = list(
   make_option(c("-N","--Namesgradient"), 
               help= "Gradient text output from binning script", type = "character", default = "gradient.txt"),
   make_option(c("-B", "--biom"), type="character",
-              help="biom-- already collapsed, but in biom format.", metavar="character", default = "OTUTableText.txt"),
+              help="biom-- already collapsed, but in txt format.", metavar="character", default = "OTUTableText.txt"),
   make_option(c("-n", "--minthreshold"), type="character",
               help="Minimum relabundance to be plotted", metavar="numeric", default = 0.05),
   make_option(c("-O", "--OTUTable"), type = "character",
@@ -136,10 +136,6 @@ abline(v = meanBoundaries
        )
 dev.off()
 
-pdf(file = "CDF_allboundaries.pdf")
-plot(ecdf(as.numeric(boundaries$V1)), main="CDF of all boundaries")
-dev.off()
-
 ########################## TAXA ABUND (Individual) ############
 
 # Taxa abundances for each taxa
@@ -162,27 +158,27 @@ for (x in (1:nrow(taxaAbundances))) {
        , ylab = 'Relative Abundance'
        , main = paste(taxa)
        , sub = paste(typeMB,bloom,signif(modelBoundaries[taxa,'sigAB'],3)," ",signif(modelBoundaries[taxa,'sigBC'],3), " ",signif(modelBoundaries[taxa,'sigAC'],1)))
-  if (testB != 'None') {
-  lines(c(minGrad,Avalue), c(meanA,meanA)
-        , lwd = 3
-        , col = 'blue')
-  lines(c(Avalue,Bvalue), c(meanB,meanB)
-        , lwd = 3
-        , col = 'purple')
-  lines(c(Bvalue,maxGrad), c(meanC,meanC)
-        , lwd = 3
-        , col = 'red')
-  } else if (testB == 'None') {
-    lines(c(minGrad,Avalue), c(meanA,meanA)
-          , lwd = 3
-          , col = 'blue')
-    lines(c(Avalue,Bvalue), c(meanA,meanC)
-          , lwd = 3
-          , col = 'purple')
-    lines(c(Bvalue,maxGrad), c(meanC,meanC)
-          , lwd = 3
-          , col = 'red')
-        }
+  # if (testB != 'None') {
+  # lines(c(minGrad,Avalue), c(meanA,meanA)
+  #       , lwd = 3
+  #       , col = 'blue')
+  # lines(c(Avalue,Bvalue), c(meanB,meanB)
+  #       , lwd = 3
+  #       , col = 'purple')
+  # lines(c(Bvalue,maxGrad), c(meanC,meanC)
+  #       , lwd = 3
+  #       , col = 'red')
+  # } else if (testB == 'None') {
+  #   lines(c(minGrad,Avalue), c(meanA,meanA)
+  #         , lwd = 3
+  #         , col = 'blue')
+  #   lines(c(Avalue,Bvalue), c(meanA,meanC)
+  #         , lwd = 3
+  #         , col = 'purple')
+  #   lines(c(Bvalue,maxGrad), c(meanC,meanC)
+  #         , lwd = 3
+  #         , col = 'red')
+  #       }
 
   dev.off()
 }
@@ -826,6 +822,7 @@ metadata <- metadata[which(rownames(metadata) %in% names(taxaAbund)),]
 metadata <- metadata[order(as.numeric(metadata[[paste0(gradientNames[4])]])),]
 # then make taxa the same
 taxaAbund <- taxaAbund[,rownames(metadata)]
+print("REACHED HERE")
 
 # Load modelBoundaries
 modelBoundaries <- read.delim(paste0(modelboundariesPWD)

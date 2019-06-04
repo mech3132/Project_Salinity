@@ -314,9 +314,30 @@ for ( d in dataset) {
     
     # match(row.names(otu.filt), tree16$tip.label)
     
-    # if dataset is 18S, root tree
+    # if dataset is 18S, root tree [ not already rooted ]
     if (d == "F18") {
-        tree16 <- root.phylo(tree16, outgroup="BACTERIA", resolve.root = TRUE)
+        taxaleg <- taxa[taxa[,1] %in% tree16$tip.label,]
+        
+        taxa.split <- sapply(taxaleg[,2], FUN = function(x) {strsplit(as.character(x), split="; __", fixed = TRUE)})
+        
+        class_list2 <- vector(length=length(taxa.split))
+        for ( i in 1:length(taxa.split) ) {
+            if ( is.na(taxa.split[[i]][2]) ) {
+                class_list2[i] <- taxa.split[[i]][1]
+            } else {
+                class_list2[i] <- taxa.split[[i]][2]
+            }
+        }
+        
+        names(class_list2) <- as.character(taxaleg[,1])
+        # unique(class_list2)
+        opistikonts <- names(class_list2)[grep(pattern="Opisthokonta", x=class_list2)]
+        
+        opist_node <- findMRCA(tree16, tips=opistikonts)
+        all_opist <- getDescendants(tree16, node = opist_node)
+        all_opist_otus <- tree16$tip.label[all_opist]
+        all_opist_otus <- all_opist_otus[!is.na(all_opist_otus)]
+        tree16 <- root.phylo(tree16, outgroup = all_opist_otus, resolve.root = TRUE)
     }
     
     

@@ -9,7 +9,7 @@ library(MASS) # for stepAIC
 # library(gridExtra)
 
 ###### Iterate through datasets #########
-# setwd('/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/SALBIN_7June2018_vsearch_silva132/')
+setwd('./')
 workingDir =getwd()
 
 
@@ -69,10 +69,10 @@ for ( d in dataset) {
     
     otu.filt <- otu[tree16$tip.label,]
     
+    # get rid of any NA rows
+    
     mb <- mb[match(rownames(otu.filt),mb$taxa),]
-    
-    
-    
+    mb <- mb[which(!is.na(mb$taxa)),]
     # Prune tree so there are only things in the table.
     tree.pruned <- prune.sample(t(otu.filt), tree16)
     
@@ -97,18 +97,20 @@ for ( d in dataset) {
     # Get midpoint of range for all brackish
     # also, separate
     temp.boundaries <- mb[match(brackish.taxa,mb[,1]),c("taxa","boundaries","boundariestwo")]
-    temp.midpoints <- apply(temp.boundaries[,c(2,3)], MARGIN = 1, FUN = mean)
-    names(temp.midpoints) <- temp.boundaries[,1]
+    temp.midpoints <- c(-100,apply(temp.boundaries[,c(2,3)], MARGIN = 1, FUN = mean)) # -100 is to double check this is removed
+    names(temp.midpoints) <- c("CON",temp.boundaries[,1])
     high.brackish.taxa <- names(which(temp.midpoints >= 15))
     low.brackish.taxa <- names(which(temp.midpoints < 15))
     
     ######### Get PD for nearest fresh, marine, brack for each OTU #########
     typesSimple <- c("freshRestricted","marineRestricted","brackishRestricted")
     
+    # NOTE: I always start with a 2 so that it always has something to remove; makes it easier to go between
+    # 16S and 18S
     freshOTUPD <- list()
     for (t in typesSimple) {
         # t <- typesSimple[1]
-        freshOTUPD[[t]] <- c()
+        freshOTUPD[[t]] <- 2
         for (n in 1:length(fresh.taxa)) {
             # n <- 1
             otuTestList <- as.character(mb[mb[,3]==t,1])
@@ -124,7 +126,7 @@ for ( d in dataset) {
     
     marineOTUPD <- list()
     for (t in typesSimple) {
-        marineOTUPD[[t]] <- c()
+        marineOTUPD[[t]] <- 2
         for (n in 1:length(marine.taxa)) {
             otuTestList <- as.character(mb[mb[,3]==t,1])
             otu <- as.character(marine.taxa[n])
@@ -138,7 +140,7 @@ for ( d in dataset) {
     
     brackishOTUPD <- list()
     for (t in typesSimple) {
-        brackishOTUPD[[t]] <- c()
+        brackishOTUPD[[t]] <- 2
         for (n in 1:length(brackish.taxa)) {
             otuTestList <- as.character(mb[mb[,3]==t,1])
             otu <- as.character(brackish.taxa[n])
@@ -150,35 +152,40 @@ for ( d in dataset) {
         }
     }
     
+    # For each analysis, REMOVE pairs where one of them has a distance greater than 1
+    
     # BRACKISH statistical comparisons
-    capture.output(t.test(brackishOTUPD$freshRestricted, brackishOTUPD$marineRestricted, paired=TRUE),file = "brackish_compare_t.test_paired.txt")
-    capture.output(shapiro.test(brackishOTUPD$freshRestricted- brackishOTUPD$marineRestricted),file="brackish_compare_shapiro.txt")
-    capture.output(wilcox.test(brackishOTUPD$freshRestricted, brackishOTUPD$marineRestricted), file="brackish_compare_wilcox.txt")
+    remove_temp_brack <- which(apply(cbind(brackishOTUPD$freshRestricted, brackishOTUPD$marineRestricted), MARGIN=1, FUN = function(x) any(x>1)))
+    capture.output(t.test(brackishOTUPD$freshRestricted[-remove_temp_brack], brackishOTUPD$marineRestricted[-remove_temp_brack], paired=TRUE),file = "brackish_compare_t.test_paired.txt")
+    capture.output(shapiro.test(brackishOTUPD$freshRestricted[-remove_temp_brack]- brackishOTUPD$marineRestricted[-remove_temp_brack]),file="brackish_compare_shapiro.txt")
+    capture.output(wilcox.test(brackishOTUPD$freshRestricted[-remove_temp_brack], brackishOTUPD$marineRestricted[-remove_temp_brack]), file="brackish_compare_wilcox.txt")
     
     # FRESH statistical comparisons
-    capture.output(t.test(freshOTUPD$freshRestricted, freshOTUPD$marineRestricted, paired=TRUE),file = "fresh_compare_t.test_paired.txt")
-    capture.output(shapiro.test(freshOTUPD$freshRestricted-freshOTUPD$marineRestricted),file="fresh_compare_shapiro.txt")
-    capture.output(wilcox.test(freshOTUPD$freshRestricted, freshOTUPD$marineRestricted), file="fresh_compare_wilcox.txt")
+    remove_temp_fresh <- which(apply(cbind(freshOTUPD$freshRestricted, freshOTUPD$marineRestricted), MARGIN=1, FUN = function(x) any(x>1)))
+    capture.output(t.test(freshOTUPD$freshRestricted[-remove_temp_fresh], freshOTUPD$marineRestricted[-remove_temp_fresh], paired=TRUE),file = "fresh_compare_t.test_paired.txt")
+    capture.output(shapiro.test(freshOTUPD$freshRestricted[-remove_temp_fresh]-freshOTUPD$marineRestricted[-remove_temp_fresh]),file="fresh_compare_shapiro.txt")
+    capture.output(wilcox.test(freshOTUPD$freshRestricted[-remove_temp_fresh], freshOTUPD$marineRestricted[-remove_temp_fresh]), file="fresh_compare_wilcox.txt")
     
     # MARINE statistical comparisons
-    capture.output(t.test(marineOTUPD$freshRestricted, marineOTUPD$marineRestricted, paired=TRUE),file = "marine_compare_t.test_paired.txt")
-    capture.output(shapiro.test(marineOTUPD$freshRestricted-marineOTUPD$marineRestricted),file="marine_compare_shapiro.txt")
-    capture.output(wilcox.test(marineOTUPD$freshRestricted, marineOTUPD$marineRestricted), file="marine_compare_wilcox.txt")
+    remove_temp_marine <- which(apply(cbind(marineOTUPD$freshRestricted, marineOTUPD$marineRestricted), MARGIN=1, FUN = function(x) any(x>1)))
+    capture.output(t.test(marineOTUPD$freshRestricted[-remove_temp_marine], marineOTUPD$marineRestricted[-remove_temp_marine], paired=TRUE),file = "marine_compare_t.test_paired.txt")
+    capture.output(shapiro.test(marineOTUPD$freshRestricted[-remove_temp_marine]-marineOTUPD$marineRestricted[-remove_temp_marine]),file="marine_compare_shapiro.txt")
+    capture.output(wilcox.test(marineOTUPD$freshRestricted[-remove_temp_marine], marineOTUPD$marineRestricted[-remove_temp_marine]), file="marine_compare_wilcox.txt")
     
     ### First, plot fresh and marine OTUs in relation to each other
     # find limits of fresh and  marine OTUs
-    rangeAxis <- range(c(freshOTUPD$freshRestricted,marineOTUPD$freshRestricted,freshOTUPD$marineRestricted,marineOTUPD$marineRestricted))
+    rangeAxis <- range(c(freshOTUPD$freshRestricted[-remove_temp_fresh],marineOTUPD$freshRestricted[-remove_temp_marine],freshOTUPD$marineRestricted[-remove_temp_fresh],marineOTUPD$marineRestricted[-remove_temp_marine]))
     pdf("marinevsfresh_PD_to_nearestMarineFresh.pdf")
     plot(NULL, xlim=c(0,rangeAxis[2]), ylim=c(0,rangeAxis[2]), xlab="Distance to nearest fresh OTU", ylab="Distance to nearest marine OTU")
-    points(freshOTUPD$freshRestricted, freshOTUPD$marineRestricted, pch=19, col="blue")
-    points(marineOTUPD$freshRestricted, marineOTUPD$marineRestricted, pch=19, col="red")
+    points(freshOTUPD$freshRestricted[-remove_temp_fresh], freshOTUPD$marineRestricted[-remove_temp_fresh], pch=19, col="blue")
+    points(marineOTUPD$freshRestricted[-remove_temp_marine], marineOTUPD$marineRestricted[-remove_temp_marine], pch=19, col="red")
     abline(a=0,b=1)
     legend("top", legend=c("Fresh OTUs","Marine OTUs"), pch=c(19,19), col=c("blue","red"))
     dev.off()
-    
-    maxAxis <- max(c(brackishOTUPD$freshRestricted,brackishOTUPD$marineRestricted))
+
+    maxAxis <- max(c(brackishOTUPD$freshRestricted[-remove_temp_brack],brackishOTUPD$marineRestricted[-remove_temp_brack]))
     pdf("brackish_PD_to_nearestMarineFresh.pdf")
-    plot(brackishOTUPD$freshRestricted, brackishOTUPD$marineRestricted, pch=19, col="purple"
+    plot(brackishOTUPD$freshRestricted[-remove_temp_brack], brackishOTUPD$marineRestricted[-remove_temp_brack], pch=19, col="purple"
          , xlab="Distance to nearest fresh OTU"
          , ylab="Distance to nearest marine OTU"
          , xlim=c(0,maxAxis)
@@ -188,30 +195,30 @@ for ( d in dataset) {
     
     pdf("brackish_PD_correlation_to_midpoint.pdf", 10,5)
     par(mfrow=c(1,2))
-    plot(brackishOTUPD$freshRestricted~as.numeric(temp.midpoints), xlab="Midpoint of tolerance range", ylab="Phyl. Dist. to nearest freshwater specialist", col="blue")
+    plot(brackishOTUPD$freshRestricted[-remove_temp_brack]~as.numeric(temp.midpoints)[-remove_temp_brack], xlab="Midpoint of tolerance range", ylab="Phyl. Dist. to nearest freshwater specialist", col="blue")
     # cor.to.fresh.summary <- summary(lm(brackishOTUPD$freshRestricted~as.numeric(temp.midpoints)))
-    cor.to.fresh.summary = cor.test(as.numeric(temp.midpoints),brackishOTUPD$freshRestricted, method=c("spearman"))
+    cor.to.fresh.summary = cor.test(as.numeric(temp.midpoints)[-remove_temp_brack],brackishOTUPD$freshRestricted[-remove_temp_brack], method=c("spearman"))
     legend("topright", legend=c(paste0("P-value = ",signif(cor.to.fresh.summary$p.value,2)), paste0("Spearmen's Rho = ",signif(as.numeric(cor.to.fresh.summary$estimate),2))), pch=c("",""), bty="n")
-    abline(lm(brackishOTUPD$freshRestricted~as.numeric(temp.midpoints)))
+    abline(lm(brackishOTUPD$freshRestricted[-remove_temp_brack]~as.numeric(temp.midpoints)[-remove_temp_brack]))
     
-    plot(brackishOTUPD$marineRestricted~as.numeric(temp.midpoints), xlab="Midpoint of tolerance range", ylab="Phyl. Dist. to nearest marine specialist", col = "red")
+    plot(brackishOTUPD$marineRestricted[-remove_temp_brack]~as.numeric(temp.midpoints)[-remove_temp_brack], xlab="Midpoint of tolerance range", ylab="Phyl. Dist. to nearest marine specialist", col = "red")
     # cor.to.marine.summary <- summary(lm(brackishOTUPD$marineRestricted~as.numeric(temp.midpoints)))
-    cor.to.marine.summary = cor.test(as.numeric(temp.midpoints),brackishOTUPD$marineRestricted, method=c("spearman"))
+    cor.to.marine.summary = cor.test(as.numeric(temp.midpoints)[-remove_temp_brack],brackishOTUPD$marineRestricted[-remove_temp_brack], method=c("spearman"))
     legend("topright", legend=c(paste0("P-value = ",signif(cor.to.marine.summary$p.value,2)), paste0("Spearman's Rho = ",signif(as.numeric(cor.to.marine.summary$estimate),2))), pch=c("",""), bty="n")
-    abline(lm(brackishOTUPD$marineRestricted~as.numeric(temp.midpoints)))
+    abline(lm(brackishOTUPD$marineRestricted[-remove_temp_brack]~as.numeric(temp.midpoints)[-remove_temp_brack]))
     dev.off()
 
     pdf("brackish_PD_correlation_to_midpoint_combined.pdf")
-    plot(brackishOTUPD$freshRestricted-brackishOTUPD$marineRestricted~as.numeric(temp.midpoints), xlab="Midpoint of tolerance range", ylab="Phyl. Dist. to nearest freshwater specialist")
+    plot(brackishOTUPD$freshRestricted[-remove_temp_brack]-brackishOTUPD$marineRestricted[-remove_temp_brack]~as.numeric(temp.midpoints)[-remove_temp_brack], xlab="Midpoint of tolerance range", ylab="Phyl. Dist. to nearest freshwater specialist")
     # cor.to.fresh.summary <- summary(lm(brackishOTUPD$freshRestricted~as.numeric(temp.midpoints)))
-    cor.to.freshmarine.summary = cor.test(as.numeric(temp.midpoints),brackishOTUPD$freshRestricted-brackishOTUPD$marineRestricted, method=c("spearman"))
+    cor.to.freshmarine.summary = cor.test(as.numeric(temp.midpoints)[-remove_temp_brack],brackishOTUPD$freshRestricted[-remove_temp_brack]-brackishOTUPD$marineRestricted[-remove_temp_brack], method=c("spearman"))
     legend("topright", legend=c(paste0("P-value = ",signif(cor.to.fresh.summary$p.value,2)), paste0("Spearmen's Rho = ",signif(as.numeric(cor.to.freshmarine.summary$estimate),2))), pch=c("",""), bty="n")
-    abline(lm(brackishOTUPD$freshRestricted-brackishOTUPD$marineRestricted~as.numeric(temp.midpoints)))
+    abline(lm(brackishOTUPD$freshRestricted[-remove_temp_brack]-brackishOTUPD$marineRestricted[-remove_temp_brack]~as.numeric(temp.midpoints)[-remove_temp_brack]))
     dev.off()
     
-    brack.fresh <- lm(as.numeric(temp.midpoints)~brackishOTUPD$freshRestricted)
+    brack.fresh <- lm(as.numeric(temp.midpoints)[-remove_temp_brack]~brackishOTUPD$freshRestricted[-remove_temp_brack])
     capture.output(stepAIC(brack.fresh),file="AIC_brackfresh.txt")
-    brack.marine <- lm(as.numeric(temp.midpoints)~brackishOTUPD$marineRestricted)
+    brack.marine <- lm(as.numeric(temp.midpoints)[-remove_temp_brack]~brackishOTUPD$marineRestricted[-remove_temp_brack])
     capture.output(stepAIC(brack.marine),file="AIC_brackmarine.txt")
     
     setwd(workingDir)
