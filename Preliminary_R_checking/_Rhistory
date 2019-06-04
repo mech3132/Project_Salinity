@@ -1,0 +1,512 @@
+###### (2) REMOVE ALL OTUS WITH LESS THAN 10 IN WHOLE OTU TABLE ####
+# remove all zeros from otu table
+print("DELETEING COUTNS WITH LESS THAN 10 per SAMP")
+for ( study in names(otu.bystudy) ) {
+otu.temp <- otu.bystudy[[study]]
+todel <- as.vector(which(rowSums(otu.temp) < thresh_all))
+# todel <- c()
+# for ( r in 1:nrow(otu.temp)) {
+#   if (max(otu.temp[r,]) < thresh_all) {
+#     todel <- c(todel, r)
+#   }
+# }
+if (length(todel) > 0) {
+otu.bystudy[[study]] <- otu.temp[-todel,]
+}
+}
+###### (3) FILTER MF AND OTU TO MAKE SURE ALL SAMPLES INCLUDED ######
+# Check to make sure everything is in everything
+for ( study in names(otu.bystudy) ) {
+# all otu in mf?
+print(any(!(colnames(otu.bystudy[[study]]) %in% rownames(mf.bystudy[[study]]))))
+# all mf in otu?
+print(any(!(rownames(mf.bystudy[[study]]) %in% colnames(otu.bystudy[[study]]))))
+}
+for ( study in names(otu.bystudy) ) {
+mf.temp <- mf.bystudy[[study]]
+otu.temp <- otu.bystudy[[study]]
+# Get sum of all sample reads, and also filter based on which are actually present in the otu table
+# colnames(otu.temp)
+contam.temp <- otu.temp[,which(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+contam.temp <- as.data.frame(contam.temp, row.names=rownames(otu.temp))
+names.contam.temp <- rownames(contam.temp)[ which(rowSums(contam.temp) >0)]
+otu.temp.filt.nocon <- otu.temp[,!c(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+RPS.temp <- colSums(otu.temp.filt.nocon)
+otu.temp.filt <- otu.temp.filt.nocon[names.contam.temp,]
+# make list of lm of reads in sample vs size of sample
+all.lm.temp <- list()
+for ( r in 1:nrow(otu.temp.filt)) {
+temp <- lm(as.numeric(otu.temp.filt[r,])/RPS.temp ~ as.vector(RPS.temp))
+m <- coef(temp)[2]
+p <- summary(temp)$coefficients[2,4]
+all.lm.temp[[paste0(rownames(otu.temp.filt)[r])]] <- c(m,p)
+}
+# if the slope is negative AND it's significant, then same as tent contam
+tent.contam.temp <- c()
+not.contam.temp <- c()
+for ( o in names(all.lm.temp) ) {
+# o="JN975971.1.1410"
+temp <- all.lm.temp[[paste0(o)]]
+if ( (temp[2] < 0.05) & (temp[1] < 0) ) {
+tent.contam.temp <- c(tent.contam.temp, o)
+} else {
+not.contam.temp <- c(not.contam.temp, o)
+}
+}
+# now plot contam and get names
+names.contam.temp <- taxa[match(tent.contam.temp,taxa[,1]),2]
+# print(names.contam.temp)
+split.names.temp <- strsplit(as.character(names.contam.temp), split = delim)
+if (length(names.contam.temp) > 0) {
+# get abundance in controls
+contam.tab <- contam.temp[tent.contam.temp,]
+contam.counts <- c()
+for ( r in 1:nrow(contam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(contam.tab) ) {
+toprint <- paste0(toprint," ",names(contam.tab)[c],":",contam.tab[r,c])
+}
+contam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(tent.contam.temp))) # make matrix
+pdf(file = paste0("Possible_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+for (n in tent.contam.temp) {
+lengthName <- length(split.names.temp[[count]])
+nameToPrint <- paste0(split.names.temp[[count]][lengthName],split.names.temp[[count]][lengthName-1])
+# print(split.names.temp[[count]])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample", sub=paste0(contam.counts[count]), cex.sub=0.5)
+count <- count + 1
+}
+dev.off()
+}
+# plot non-contam and get names
+names.noncontam.temp <- taxa[match(not.contam.temp,taxa[,1]),2]
+split.names.non.temp <- strsplit(as.character(names.noncontam.temp), split = delim)
+# get abundance in controls
+ncontam.tab <- as.data.frame(contam.temp[not.contam.temp,], row.names =not.contam.temp)
+ncontam.counts <- c()
+for ( r in 1:nrow(ncontam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(ncontam.tab) ) {
+toprint <- paste0(toprint," ",names(ncontam.tab)[c],":",ncontam.tab[r,c])
+}
+ncontam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(not.contam.temp)))# make matrix
+pdf(file = paste0("Other_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+for (n in not.contam.temp) {
+lengthName <- length(split.names.non.temp[[count]])
+nameToPrint <- paste0(split.names.non.temp[[count]][lengthName],split.names.non.temp[[count]][lengthName-1])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample",sub=paste0(ncontam.counts[count]), cex.sub=0.5)
+count <- count + 1
+}
+dev.off()
+}
+split.names.temp
+nameToPrint
+for ( study in names(otu.bystudy) ) {
+mf.temp <- mf.bystudy[[study]]
+otu.temp <- otu.bystudy[[study]]
+# Get sum of all sample reads, and also filter based on which are actually present in the otu table
+# colnames(otu.temp)
+contam.temp <- otu.temp[,which(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+contam.temp <- as.data.frame(contam.temp, row.names=rownames(otu.temp))
+names.contam.temp <- rownames(contam.temp)[ which(rowSums(contam.temp) >0)]
+otu.temp.filt.nocon <- otu.temp[,!c(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+RPS.temp <- colSums(otu.temp.filt.nocon)
+otu.temp.filt <- otu.temp.filt.nocon[names.contam.temp,]
+# make list of lm of reads in sample vs size of sample
+all.lm.temp <- list()
+for ( r in 1:nrow(otu.temp.filt)) {
+temp <- lm(as.numeric(otu.temp.filt[r,])/RPS.temp ~ as.vector(RPS.temp))
+m <- coef(temp)[2]
+p <- summary(temp)$coefficients[2,4]
+all.lm.temp[[paste0(rownames(otu.temp.filt)[r])]] <- c(m,p)
+}
+# if the slope is negative AND it's significant, then same as tent contam
+tent.contam.temp <- c()
+not.contam.temp <- c()
+for ( o in names(all.lm.temp) ) {
+# o="JN975971.1.1410"
+temp <- all.lm.temp[[paste0(o)]]
+if ( (temp[2] < 0.05) & (temp[1] < 0) ) {
+tent.contam.temp <- c(tent.contam.temp, o)
+} else {
+not.contam.temp <- c(not.contam.temp, o)
+}
+}
+# now plot contam and get names
+names.contam.temp <- taxa[match(tent.contam.temp,taxa[,1]),2]
+# print(names.contam.temp)
+split.names.temp <- strsplit(as.character(names.contam.temp), split = delim)
+if (length(names.contam.temp) > 0) {
+# get abundance in controls
+contam.tab <- contam.temp[tent.contam.temp,]
+contam.counts <- c()
+for ( r in 1:nrow(contam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(contam.tab) ) {
+toprint <- paste0(toprint," ",names(contam.tab)[c],":",contam.tab[r,c])
+}
+contam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(tent.contam.temp))) # make matrix
+pdf(file = paste0("Possible_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+toPrintContam <- c()
+for (n in tent.contam.temp) {
+lengthName <- length(split.names.temp[[count]])
+nameToPrint <- paste0(split.names.temp[[count]][lengthName],split.names.temp[[count]][lengthName-1])
+# print(split.names.temp[[count]])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample", sub=paste0(contam.counts[count]), cex.sub=0.5)
+count <- count + 1
+toPrintContam <- c(toPrintContam, paste0(nameToPrint, "(",n,")"))
+}
+dev.off()
+write.table(toPrintContam, file=paste0("Possible_contam",study,".txt"))
+}
+# plot non-contam and get names
+names.noncontam.temp <- taxa[match(not.contam.temp,taxa[,1]),2]
+split.names.non.temp <- strsplit(as.character(names.noncontam.temp), split = delim)
+# get abundance in controls
+ncontam.tab <- as.data.frame(contam.temp[not.contam.temp,], row.names =not.contam.temp)
+ncontam.counts <- c()
+for ( r in 1:nrow(ncontam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(ncontam.tab) ) {
+toprint <- paste0(toprint," ",names(ncontam.tab)[c],":",ncontam.tab[r,c])
+}
+ncontam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(not.contam.temp)))# make matrix
+pdf(file = paste0("Other_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+toPrintContam <- c()
+for (n in not.contam.temp) {
+lengthName <- length(split.names.non.temp[[count]])
+nameToPrint <- paste0(split.names.non.temp[[count]][lengthName],split.names.non.temp[[count]][lengthName-1])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample",sub=paste0(ncontam.counts[count]), cex.sub=0.5)
+count <- count + 1
+toPrintContam <-c(toPrintContam,paste0(nameToPrint, "(",n,")"))
+}
+dev.off()
+write.table(toPrintContam, file=paste0("Other_contam",study,".txt"))
+}
+otu <- read.delim("OTU_Table_text_forcontamscan.txt", header=TRUE, row.names=1, skip =1, stringsAsFactors = FALSE)
+setwd("/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/Removing_contamined_samples")
+output
+output <- "filter_contam_16"
+dir.create(output)
+setwd(output)
+system(paste0("biom convert -i ",otu_table," --to-tsv --header-key taxonomy -o OTU_Table_text_forcontamscan.txt"))
+otu <- read.delim("OTU_Table_text_forcontamscan.txt", header=TRUE, row.names=1, skip =1, stringsAsFactors = FALSE)
+mf <- read.delim(paste0(mf_fp), header=TRUE, row.names=1, stringsAsFactors = FALSE, na.strings = "")
+blanks_split <- unlist(strsplit(blanks, split = c(":")))
+blanks_split <- c(blanks_split[1], strsplit(blanks_split[2], ","))
+table_split <- unlist(strsplit(splittable, split = c(":")))
+table_split <- c(table_split[1], strsplit(table_split[2], ","))
+print("Setting up tables...")
+taxa <- data.frame(rownames(otu), otu[,ncol(otu)])
+otu <- otu[,-ncol(otu)]
+if (numberstart == "TRUE") {
+colnames(otu) <- gsub("^X","",colnames(otu))
+}
+if (dashes == "TRUE") {
+rownames(mf) <- gsub("-",".", rownames(mf), fixed=TRUE)
+}
+tofilt <- which(rownames(mf) %in% colnames(otu))
+mf.filt <- mf[tofilt,]
+otu.bystudy <- list()
+mf.bystudy <- list()
+for ( study in table_split[[2]] ) {
+mf.bystudy[[study]] <- mf.filt[which(mf.filt[[table_split[[1]]]] == study),]
+otu.bystudy[[study]] <- otu[,match(rownames(mf.bystudy[[study]]), colnames(otu))]
+}
+print("DELETING COUNTS WITH LESS THAN 5 PER SAMP")
+for ( study in names(otu.bystudy) ) {
+print(paste0("On study ",study))
+otu.temp <- otu.bystudy[[study]]
+otu.temp[otu.temp < thresh_sample]<- 0
+# for ( r in 1:nrow(otu.temp) ) {
+#     print(paste0("Row ",r , " out of ",nrow(otu.temp)))
+#   for (c in 1:ncol(otu.temp) ) {
+#     if (otu.temp[r,c] < thresh_sample) {
+#       otu.temp[r,c] <- 0
+#     }
+#   }
+# }
+otu.bystudy[[study]] <- otu.temp
+}
+print("DELETEING COUTNS WITH LESS THAN 10 per SAMP")
+for ( study in names(otu.bystudy) ) {
+otu.temp <- otu.bystudy[[study]]
+todel <- as.vector(which(rowSums(otu.temp) < thresh_all))
+# todel <- c()
+# for ( r in 1:nrow(otu.temp)) {
+#   if (max(otu.temp[r,]) < thresh_all) {
+#     todel <- c(todel, r)
+#   }
+# }
+if (length(todel) > 0) {
+otu.bystudy[[study]] <- otu.temp[-todel,]
+}
+}
+for ( study in names(otu.bystudy) ) {
+# all otu in mf?
+print(any(!(colnames(otu.bystudy[[study]]) %in% rownames(mf.bystudy[[study]]))))
+# all mf in otu?
+print(any(!(rownames(mf.bystudy[[study]]) %in% colnames(otu.bystudy[[study]]))))
+}
+study
+mf.temp <- mf.bystudy[[study]]
+otu.temp <- otu.bystudy[[study]]
+contam.temp <- otu.temp[,which(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+contam.temp <- as.data.frame(contam.temp, row.names=rownames(otu.temp))
+names.contam.temp <- rownames(contam.temp)[ which(rowSums(contam.temp) >0)]
+otu.temp.filt.nocon <- otu.temp[,!c(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+RPS.temp <- colSums(otu.temp.filt.nocon)
+otu.temp.filt <- otu.temp.filt.nocon[names.contam.temp,]
+all.lm.temp <- list()
+for ( r in 1:nrow(otu.temp.filt)) {
+temp <- lm(as.numeric(otu.temp.filt[r,])/RPS.temp ~ as.vector(RPS.temp))
+m <- coef(temp)[2]
+p <- summary(temp)$coefficients[2,4]
+all.lm.temp[[paste0(rownames(otu.temp.filt)[r])]] <- c(m,p)
+}
+tent.contam.temp <- c()
+not.contam.temp <- c()
+for ( o in names(all.lm.temp) ) {
+# o="JN975971.1.1410"
+temp <- all.lm.temp[[paste0(o)]]
+if ( (temp[2] < 0.05) & (temp[1] < 0) ) {
+tent.contam.temp <- c(tent.contam.temp, o)
+} else {
+not.contam.temp <- c(not.contam.temp, o)
+}
+}
+names.contam.temp <- taxa[match(tent.contam.temp,taxa[,1]),2]
+split.names.temp <- strsplit(as.character(names.contam.temp), split = delim)
+if (length(names.contam.temp) > 0) {
+# get abundance in controls
+contam.tab <- contam.temp[tent.contam.temp,]
+contam.counts <- c()
+for ( r in 1:nrow(contam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(contam.tab) ) {
+toprint <- paste0(toprint," ",names(contam.tab)[c],":",contam.tab[r,c])
+}
+contam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(tent.contam.temp))) # make matrix
+pdf(file = paste0("Possible_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+toPrintContam <- c()
+for (n in tent.contam.temp) {
+lengthName <- length(split.names.temp[[count]])
+nameToPrint <- paste0(split.names.temp[[count]][lengthName],split.names.temp[[count]][lengthName-1])
+# print(split.names.temp[[count]])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample", sub=paste0(contam.counts[count]), cex.sub=0.5)
+count <- count + 1
+toPrintContam <- c(toPrintContam, paste0(nameToPrint, "(",n,")"))
+}
+dev.off()
+write.table(toPrintContam, file=paste0("Possible_contam",study,".txt"))
+}
+names.noncontam.temp <- taxa[match(not.contam.temp,taxa[,1]),2]
+split.names.non.temp <- strsplit(as.character(names.noncontam.temp), split = delim)
+ncontam.tab <- as.data.frame(contam.temp[not.contam.temp,], row.names =not.contam.temp)
+ncontam.counts <- c()
+for ( r in 1:nrow(ncontam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(ncontam.tab) ) {
+toprint <- paste0(toprint," ",names(ncontam.tab)[c],":",ncontam.tab[r,c])
+}
+ncontam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(not.contam.temp)))# make matrix
+pdf(file = paste0("Other_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+toPrintContam <- c()
+for (n in not.contam.temp) {
+lengthName <- length(split.names.non.temp[[count]])
+nameToPrint <- paste0(split.names.non.temp[[count]][lengthName],split.names.non.temp[[count]][lengthName-1])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample",sub=paste0(ncontam.counts[count]), cex.sub=0.5)
+count <- count + 1
+toPrintContam <-c(toPrintContam,paste0(nameToPrint, "(",n,")"))
+}
+dev.off()
+write.table(toPrintContam, file=paste0("Other_contam",study,".txt"))
+for ( study in names(otu.bystudy) ) {
+mf.temp <- mf.bystudy[[study]]
+otu.temp <- otu.bystudy[[study]]
+# Get sum of all sample reads, and also filter based on which are actually present in the otu table
+# colnames(otu.temp)
+contam.temp <- otu.temp[,which(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+contam.temp <- as.data.frame(contam.temp, row.names=rownames(otu.temp))
+names.contam.temp <- rownames(contam.temp)[ which(rowSums(contam.temp) >0)]
+otu.temp.filt.nocon <- otu.temp[,!c(mf.temp[blanks_split[[1]]]==blanks_split[[2]])]
+RPS.temp <- colSums(otu.temp.filt.nocon)
+otu.temp.filt <- otu.temp.filt.nocon[names.contam.temp,]
+# make list of lm of reads in sample vs size of sample
+all.lm.temp <- list()
+for ( r in 1:nrow(otu.temp.filt)) {
+temp <- lm(as.numeric(otu.temp.filt[r,])/RPS.temp ~ as.vector(RPS.temp))
+m <- coef(temp)[2]
+p <- summary(temp)$coefficients[2,4]
+all.lm.temp[[paste0(rownames(otu.temp.filt)[r])]] <- c(m,p)
+}
+# if the slope is negative AND it's significant, then same as tent contam
+tent.contam.temp <- c()
+not.contam.temp <- c()
+for ( o in names(all.lm.temp) ) {
+# o="JN975971.1.1410"
+temp <- all.lm.temp[[paste0(o)]]
+if ( (temp[2] < 0.05) & (temp[1] < 0) ) {
+tent.contam.temp <- c(tent.contam.temp, o)
+} else {
+not.contam.temp <- c(not.contam.temp, o)
+}
+}
+# now plot contam and get names
+names.contam.temp <- taxa[match(tent.contam.temp,taxa[,1]),2]
+# print(names.contam.temp)
+split.names.temp <- strsplit(as.character(names.contam.temp), split = delim)
+if (length(names.contam.temp) > 0) {
+# get abundance in controls
+contam.tab <- contam.temp[tent.contam.temp,]
+contam.counts <- c()
+for ( r in 1:nrow(contam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(contam.tab) ) {
+toprint <- paste0(toprint," ",names(contam.tab)[c],":",contam.tab[r,c])
+}
+contam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(tent.contam.temp))) # make matrix
+pdf(file = paste0("Possible_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+toPrintContam <- c()
+for (n in tent.contam.temp) {
+lengthName <- length(split.names.temp[[count]])
+nameToPrint <- paste0(split.names.temp[[count]][lengthName],split.names.temp[[count]][lengthName-1])
+# print(split.names.temp[[count]])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample", sub=paste0(contam.counts[count]), cex.sub=0.5)
+count <- count + 1
+toPrintContam <- c(toPrintContam, paste0(nameToPrint, "(",n,")"))
+}
+dev.off()
+write.table(toPrintContam, file=paste0("Possible_contam",study,".txt"))
+}
+# plot non-contam and get names
+names.noncontam.temp <- taxa[match(not.contam.temp,taxa[,1]),2]
+split.names.non.temp <- strsplit(as.character(names.noncontam.temp), split = delim)
+# get abundance in controls
+ncontam.tab <- as.data.frame(contam.temp[not.contam.temp,], row.names =not.contam.temp)
+ncontam.counts <- c()
+for ( r in 1:nrow(ncontam.tab) ) {
+toprint <- ""
+for ( c in 1:ncol(ncontam.tab) ) {
+toprint <- paste0(toprint," ",names(ncontam.tab)[c],":",ncontam.tab[r,c])
+}
+ncontam.counts[r] <- toprint
+}
+mat.dim <- ceiling(sqrt(length(not.contam.temp)))# make matrix
+pdf(file = paste0("Other_contam_",study,".pdf"), width = 10*(mat.dim/3), height = 10*(mat.dim/3))
+par(mfrow=c(mat.dim, mat.dim))
+count <- 1
+toPrintContam <- c()
+for (n in not.contam.temp) {
+lengthName <- length(split.names.non.temp[[count]])
+nameToPrint <- paste0(split.names.non.temp[[count]][lengthName],split.names.non.temp[[count]][lengthName-1])
+plot(as.numeric(otu.temp.filt.nocon[n,])/RPS.temp ~ RPS.temp, ylab="Rel Abund", main=paste0(nameToPrint, "(",n,")"), xlab="Reads/sample",sub=paste0(ncontam.counts[count]), cex.sub=0.5)
+count <- count + 1
+toPrintContam <-c(toPrintContam,paste0(nameToPrint, "(",n,")"))
+}
+dev.off()
+write.table(toPrintContam, file=paste0("Other_contam",study,".txt"))
+}
+contam.temp
+tent.contam.temp,
+tent.contam.temp
+contam.temp[tent.contam.temp,]
+as.data.frame(contam.temp)
+contam.tab <- as.data.frame(contam.temp)[match(tent.contam.temp, rownames(contam.temp)),]
+contam.tab
+ncontam.counts
+#!/bin/bash
+library(MASS) # for NMDS plotting (isoMDS)
+##### This script takes otutables an stuff from salinity project and plots them to see if there are differences in extr/seq methods #######
+#### Set FP #####
+setwd("/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/Preliminary_R_checking")
+dm16sFP <- "/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/Preliminary_R_checking/beta_div_fr16/bray_curtis_fraser16_otutable_min1000.txt"
+dm18sFP <- "/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/Preliminary_R_checking/beta_div_fr18/bray_curtis_fraser18_otutable_min1000.txt"
+mf16FP <- "/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/Fraser_16S/99_vsearch_silva132/Fraser16s_mappingfile_merged.txt"
+mf18FP <- "/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/Fraser_18S/99_vsearch_silva132/MF_Fraser18s.txt"
+#############
+dm16 <- read.delim(dm16sFP, header=TRUE, stringsAsFactors = FALSE, row.names=1)
+dm18 <- read.delim(dm18sFP, header=TRUE, stringsAsFactors = FALSE, row.names=1)
+mf16 <- read.delim(mf16FP, header=TRUE, stringsAsFactors = FALSE, row.names=1)
+mf18 <- read.delim(mf18FP, header=TRUE, stringsAsFactors = FALSE, row.names=1)
+mf16 <- mf16[match(rownames(dm16), rownames(mf16)),]
+mf18 <- mf18[match(rownames(dm18), rownames(mf18)),]
+set.seed(1234012934)
+nmds16 <- isoMDS(dist(dm16), k=2)
+nmds18 <- isoMDS(dist(dm18), k=2)
+# Plot via colors
+salGrad <- colorRampPalette(colors = c("white","blue","darkblue"))
+colorSal <- salGrad(34)
+salRound <- round(as.numeric(mf16$SalinityEnviron))
+salRound18s <- round(as.numeric(mf18$SalinityEnviron))
+#### NMDS 16s #####
+pdf("Fr16s_NMDS.pdf",7,7)
+par(mfrow=c(2,2), mar=c(4.1,4.1,2.1,2.1))
+plot(nmds16$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=colorSal[factor(salRound)]
+)
+legend("bottomright",legend=c("Salinity=0","Salinity=33"),pch=21, pt.bg=c("white","darkblue"), cex=0.7)
+plot(nmds16$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=c("purple","green")[factor(mf16$Extrmethod)]
+)
+legend("bottomright",legend=c("Single Tube","Plate"),pch=21, pt.bg=c("green","purple"), cex=0.7)
+plot(nmds16$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=c("red","blue","orange")[factor(mf16$Year)]
+)
+legend("bottomright",legend=c("Fr2014-MC_FN","Fr2015-FN","Fr2016-MC"),pch=21, pt.bg=c("red","blue","orange"), cex=0.7)
+plot(nmds16$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=c("grey","yellow")[factor(mf16$Polymerase)]
+)
+legend("bottomright",legend=c("Phusion","5Prime"),pch=21, pt.bg=c("grey","yellow"), cex=0.7)
+dev.off()
+#### NMDS 18s ####
+pdf("Fr18s_NMDS.pdf",7,7)
+par(mfrow=c(2,2), mar=c(4.1,4.1,2.1,2.1))
+plot(nmds18$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=colorSal[factor(salRound18s)]
+)
+legend("topleft",legend=c("Salinity=0","Salinity=33"),pch=21, pt.bg=c("white","darkblue"), cex=0.7)
+plot(nmds18$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=c("purple","green")[factor(mf18$Extrmethod)]
+)
+legend("topleft",legend=c("Single Tube","Plate"),pch=21, pt.bg=c("green","purple"), cex=0.7)
+plot(nmds18$points, xlab="NMDS1", ylab="NMDS2"
+, pch=21
+, bg=c("red","blue","orange")[factor(mf18$Year)]
+)
+legend("topleft",legend=c("Fr2014-MC_FN","Fr2015-FN","Fr2016-MC"),pch=21, pt.bg=c("red","blue","orange"), cex=0.7)
+dev.off()
+###### CHECKING DELETED SAMPLES #######
