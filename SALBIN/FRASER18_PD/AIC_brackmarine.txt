@@ -1,0 +1,20 @@
+Start:  AIC=4451.8
+as.numeric(temp.midpoints)[-remove_temp_brack] ~ brackishOTUPD$marineRestricted[-remove_temp_brack]
+
+                                                     Df Sum of Sq   RSS
+<none>                                                            39428
+- brackishOTUPD$marineRestricted[-remove_temp_brack]  1    3504.4 42933
+                                                        AIC
+<none>                                               4451.8
+- brackishOTUPD$marineRestricted[-remove_temp_brack] 4560.9
+
+Call:
+lm(formula = as.numeric(temp.midpoints)[-remove_temp_brack] ~ 
+    brackishOTUPD$marineRestricted[-remove_temp_brack])
+
+Coefficients:
+                                       (Intercept)  
+                                             11.84  
+brackishOTUPD$marineRestricted[-remove_temp_brack]  
+                                            -11.52  
+
