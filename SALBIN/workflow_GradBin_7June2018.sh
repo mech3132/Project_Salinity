@@ -14,6 +14,7 @@ biomFRASER18=../raw_otu_and_mf/Fraser_18s/OUTPUT_FILES/otu_table_col_wtaxa.biom
 MFFRASER18=../raw_otu_and_mf/Fraser_18s/OUTPUT_FILES/MF_18sFraser_noConCOL.txt
 outputFRASER18=18sFraser
 tree16=../SILVA_132_files/16s/NR99_otus_16S.tre
+tree18=../Preliminary_R_checking/tree18.tre
 
 gradient='fresh,brackish,marine'
 gradientNAME=SalinityEnviron
@@ -111,10 +112,13 @@ then
 	# For Fraser 18s
 	# filter_tree.py -i /Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/trees/SILVA_132/18s/*.tre -t /Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/SALBIN_7June2018_vsearch_silva132/18sFraser_7june2018/OTUs.txt -o tree_F18_filt.tre
 	# first, add "BACTERIA" to list of OTUs to keep
-	echo "\r\n" >> 18sFraser/OTUs.txt
-	echo "BACTERIA" >> 18sFraser/OTUs.txt
+	# echo "\r\n" >> 18sFraser/OTUs.txt
+# 	echo "BACTERIA" >> 18sFraser/OTUs.txt
 
-	filter_tree.py -i ../raw_otu_and_mf/Fraser_18S/MANUAL_INPUT_FILES/tmp_withbact.tre -t 18sFraser/OTUs.txt -o tree_F18_filt.tre
+# 	filter_tree.py -i ../raw_otu_and_mf/Fraser_18S/MANUAL_INPUT_FILES/tmp_withbact.tre -t 18sFraser/OTUs.txt -o tree_F18_filt.tre
+	
+	## New tree
+	filter_tree.py -i $tree18 -t 18sFraser/OTUs.txt -o tree_F18_filt.tre
 
 
 	# For combo baltic and fraser 16s; **** must already have made non-duplicate OTU list from both datasets
