@@ -1,0 +1,13 @@
+Permutation test for adonis under reduced model
+Terms added sequentially (first to last)
+Permutation: free
+Number of permutations: 999
+
+adonis2(formula = dist(dm16) ~ Year + Polymerase + Extrmethod, data = mf16)
+            Df SumOfSqs       F Pr(>F)    
+Year         1    23.96  6.4484  0.005 ** 
+Polymerase   1   311.97 83.9532  0.001 ***
+Extrmethod   1    17.46  4.6993  0.012 *  
+Residual   146   542.54                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
