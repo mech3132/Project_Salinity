@@ -4,6 +4,7 @@
 # setwd("/Volumes/MCDataDrive/Users/melissachen/Documents/Masters_data/Undergrad_Environmental/Roughwork/ALLDATASETS_7march2017_16s/2_analysis_ALL/SALBIN_16s_FRASER_13march2017/")
 ########################## OPTPARSE ####################################
 library(optparse)
+library(MASS)
 
 option_list = list(
   make_option(c("-b", "--boundaries"), type="character",
@@ -42,6 +43,8 @@ typetablePWD = opt$OTUTable
 
 
 ########################## For Testing ####################################
+# setwd('/Users/melissachen/Documents/Masters/Project_QTAG_writing/SALBIN/16sBaltic/')
+
 # setwd('/Users/melissachen/Documents/Masters/Project_Environmental/FromBotaClust_1feb2018/SALBIN_7June2018_vsearch_silva132/16sBALTIC_7june2018')
 # wd <- getwd()
 # boundariesPWD = unlist(paste0(wd, "/boundaries.txt"))
@@ -136,9 +139,6 @@ abline(v = meanBoundaries
        )
 dev.off()
 
-pdf(file = "CDF_allboundaries.pdf")
-plot(ecdf(as.numeric(boundaries$V1)), main="CDF of all boundaries")
-dev.off()
 
 ########################## TAXA ABUND (Individual) ############
 
@@ -1513,5 +1513,170 @@ for (i in 1:nrow(comboLinesOrderedSimp)) {
 }
 dev.off()
 
+#### EXTREME VALUE TOLERANCE RANGE PLOTS ####
+
+# PLOT ORDERED
+
+# Get subset only
+loLines <- editedModelBoundaries[grep(paste0(gradientNames[1]), editedModelBoundaries$typeSimple),]
+interLines <- editedModelBoundaries[grep(paste0(gradientNames[2]), editedModelBoundaries$typeSimple),]
+hiLines <- editedModelBoundaries[grep(paste0(gradientNames[3]), editedModelBoundaries$typeSimple),]
+
+# Sorting lo and hi lines are easy
+loLines <- loLines[order(loLines$EXTRMAX, decreasing = FALSE), ]
+hiLines <- hiLines[order(hiLines$EXTRMIN, decreasing = FALSE),]
+
+# But I want inter lines to be sorted by 'middle' I think
+sizeForInter <- c()
+midForInter <- c()
+for (i in 1:nrow(interLines)) {
+    size <- (interLines$EXTRMAX[i]-interLines$EXTRMIN[i])
+    mid <- mean(c(interLines$EXTRMAX[i],interLines$EXTRMIN[i]))
+    sizeForInter <- c(sizeForInter, size)
+    midForInter <- c(midForInter, mid)
+}
+
+interLines <- interLines[order(midForInter,sizeForInter),]
+
+# Combine fresh, brackish, marine
+comboLinesOrdered <- rbind(loLines,interLines,hiLines)
+# Get rid of NAs from fresh and marine dataset
+comboLinesOrdered <- comboLinesOrdered[grep("[0-9]",comboLinesOrdered$STOP),]
+comboLinesOrdered <- comboLinesOrdered[grep("[0-9]",comboLinesOrdered$START),]
+# Get y intersect
+sequenceOrderCombo <- seq(0,100,by = (100-0)/nrow(comboLinesOrdered))
+
+# Get 'extreme' points; over threshold.
+minPoints <- editedModelBoundaries['EXTRMIN'][unlist(lapply(rownames(comboLinesOrdered), function(x) {grep(paste0("^",x,"$"), rownames(editedModelBoundaries))})),]
+maxPoints <- editedModelBoundaries['EXTRMAX'][unlist(lapply(rownames(comboLinesOrdered), function(x) {grep(paste0("^",x,"$"), rownames(editedModelBoundaries))})),]
 
 
+pdf(file = "OTUrangelimits_Ordered_all_EXTREMES.pdf", width = 5, height = 10)
+plot(NULL
+     , xlim = c(minGrad,maxGrad)
+     , ylim = c(0,100)
+     , xlab = "Salinity"
+     , ylab = ""
+     , bty = "n"
+     , yaxt = "n"
+     , main = "OTU salinity tolerance ranges across salinity")
+for (i in 1:nrow(comboLinesOrdered)) {
+    colorTempFull <- getColor(comboLinesOrdered$type[i])
+    lines(c(comboLinesOrdered$EXTRMIN[i], comboLinesOrdered$EXTRMAX[i])
+          , c(sequenceOrderCombo[i],sequenceOrderCombo[i])
+          , col = colorTempFull)
+    colorTempLess <- rbind(col2rgb(colorTempFull), alpha = 25.5)[,1]/255
+    # lines(c(minPoints[i], maxPoints[i])
+    #       , c(sequenceOrderCombo[i],sequenceOrderCombo[i])
+    #       , cex = 0.1
+    #       , col = rgb(colorTempLess[1], colorTempLess[2], colorTempLess[3], colorTempLess[4]))
+}
+dev.off()
+
+
+pdf(file = "OTUrangelimits_OrderedCondensed_EXTREMES.pdf", width = 5, height = 10)
+plot(NULL
+     , xlim = c(minGrad,maxGrad)
+     , ylim = c(0,100)
+     , xlab = "Salinity"
+     , ylab = ""
+     , bty = "n"
+     , yaxt = "n"
+     , main = "OTU salinity tolerance ranges across salinity")
+for (i in 1:nrow(comboLinesOrdered)) {
+    colorTempFull <- getColor(comboLinesOrdered$typeSimple[i])
+    lines(c(comboLinesOrdered$EXTRMIN[i], comboLinesOrdered$EXTRMAX[i])
+          , c(sequenceOrderCombo[i],sequenceOrderCombo[i])
+          , col = colorTempFull)
+    colorTempLess <- rbind(col2rgb(colorTempFull), alpha = 25.5)[,1]/255
+    # lines(c(minPoints[i], maxPoints[i])
+    #       , c(sequenceOrderCombo[i],sequenceOrderCombo[i])
+    #       , cex = 0.1
+    #       , col = rgb(colorTempLess[1], colorTempLess[2], colorTempLess[3], colorTempLess[4]))
+    # points(maxPoints[i], sequenceOrderCombo[i]
+    #        , cex = 0.1
+    #        , col = c(col2rgb(getColor(comboLinesOrdered$typeSimple[i])),0.1))
+}
+
+dev.off()
+
+##### CDFs #####
+
+### Boundary CDFs ###
+allBoundaries <- c(editedModelBoundaries$START, editedModelBoundaries$STOP)
+freshBoundaries <- c(editedModelBoundaries$START[editedModelBoundaries$typeSimple=="freshRestricted"]
+                   ,editedModelBoundaries$STOP[editedModelBoundaries$typeSimple=="freshRestricted"])
+brackBoundaries1  <- c(editedModelBoundaries$START[editedModelBoundaries$typeSimple=="brackishRestricted"])
+brackBoundaries2  <- c(editedModelBoundaries$STOP[editedModelBoundaries$typeSimple=="brackishRestricted"])
+marineBoundaries <-  c(editedModelBoundaries$START[editedModelBoundaries$typeSimple=="marineRestricted"]
+                     ,editedModelBoundaries$STOP[editedModelBoundaries$typeSimple=="marineRestricted"])
+
+# Overall CDF
+boundaries.cdf <- ecdf(allBoundaries)
+Salinity <- seq(0,40,length.out = length(allBoundaries))
+`F(Salinity)` <- boundaries.cdf(v=Salinity)
+
+# Fresh CDF
+boundaries.fresh.cdf <- ecdf(freshBoundaries)
+fresh.b.cdf <- boundaries.fresh.cdf(v=Salinity)
+
+# Brack CDF
+boundaries.brack1.cdf <- ecdf(brackBoundaries1)
+brack1.b.cdf <- boundaries.brack1.cdf(v=Salinity)
+boundaries.brack2.cdf <- ecdf(brackBoundaries2)
+brack2.b.cdf <- boundaries.brack2.cdf(v=Salinity)
+# Marine CDF
+boundaries.marine.cdf <- ecdf(marineBoundaries)
+marine.b.cdf <- boundaries.marine.cdf(v=Salinity)
+
+
+pdf("CDF_boundaries.pdf")
+plot(`F(Salinity)` ~ Salinity, type="l", lwd=3, ylim=c(0,1))
+lines(fresh.b.cdf ~ Salinity, col="blue", lty=3, lwd=2)
+lines(brack1.b.cdf ~ Salinity, col="purple4", lty=3, lwd=2)
+lines(brack2.b.cdf ~ Salinity, col="magenta", lty=3, lwd=2)
+lines(marine.b.cdf ~ Salinity, col="red", lty=3, lwd=2)
+legend("bottomright", legend = c("All","Fresh (end)","Brackish (start)", "Brackish (end)", "Marine (start)"), lty=c(1,3,3,3,3), col=c("black","blue","purple4","magenta","blue"), bty="n")
+dev.off()
+
+
+### Extreme CDFs ###
+allExtremes <- c(editedModelBoundaries$EXTRMIN, editedModelBoundaries$EXTRMAX)
+freshExtremes <- c(editedModelBoundaries$EXTRMIN[editedModelBoundaries$typeSimple=="freshRestricted"]
+                   ,editedModelBoundaries$EXTRMAX[editedModelBoundaries$typeSimple=="freshRestricted"])
+brackExtremes1  <- c(editedModelBoundaries$EXTRMIN[editedModelBoundaries$typeSimple=="brackishRestricted"])
+brackExtremes2  <- c(editedModelBoundaries$EXTRMAX[editedModelBoundaries$typeSimple=="brackishRestricted"])
+marineExtremes <-  c(editedModelBoundaries$EXTRMIN[editedModelBoundaries$typeSimple=="marineRestricted"]
+                    ,editedModelBoundaries$EXTRMAX[editedModelBoundaries$typeSimple=="marineRestricted"])
+
+# Overall CDF
+extreme.cdf <- ecdf(allExtremes)
+Salinity <- seq(0,max(allExtremes),length.out = length(allExtremes))
+`F(Salinity)` <- extreme.cdf(v=Salinity)
+
+# Fresh CDF
+extreme.fresh.cdf <- ecdf(freshExtremes)
+fresh.cdf <- extreme.fresh.cdf(v=Salinity)
+
+# Brack CDF
+extreme.brack1.cdf <- ecdf(brackExtremes1)
+brack1.cdf <- extreme.brack1.cdf(v=Salinity)
+extreme.brack2.cdf <- ecdf(brackExtremes2)
+brack2.cdf <- extreme.brack2.cdf(v=Salinity)
+# Marine CDF
+extreme.marine.cdf <- ecdf(marineExtremes)
+marine.cdf <- extreme.marine.cdf(v=Salinity)
+
+
+pdf("CDF_extremeranges.pdf")
+plot(`F(Salinity)` ~ Salinity, type="l", lwd=3)
+lines(fresh.cdf ~ Salinity, col="blue", lty=3, lwd=2)
+lines(brack1.cdf ~ Salinity, col="purple4", lty=3, lwd=2)
+lines(brack2.cdf ~ Salinity, col="magenta", lty=3, lwd=2)
+lines(marine.cdf ~ Salinity, col="red", lty=3, lwd=2)
+legend("topleft", legend = c("All","Fresh (end)","Brackish (start)", "Brackish (end)", "Marine (start)"), lty=c(1,3,3,3,3), col=c("black","blue","purple4","magenta","blue"), bty="n")
+dev.off()
+
+pdf("histogram_extremeranges.pdf")
+hist(c(editedModelBoundaries$EXTRMAX - editedModelBoundaries$EXTRMIN), main="Histogram of extreme ranges", xlab="Range breadth (ppt)")
+dev.off()
