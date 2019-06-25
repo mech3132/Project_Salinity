@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##### Preliminary beta div plots to check where all samples lay ####
-
+### THIS SCRIPT IS NOW OBSOLETE ####
 fraser16=../raw_otu_and_mf/Fraser_16S/OUTPUT_FILES/otu_table_nochloromito_wtaxa.biom
 fraser18=../raw_otu_and_mf/Fraser_18S/OUTPUT_FILES/otu_table_nocon.biom
 plotscript=../R/PCOA_plots.R
