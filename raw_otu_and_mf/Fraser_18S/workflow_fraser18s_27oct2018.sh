@@ -8,7 +8,8 @@
 # Filters out some potential contaminants
 # Adds re-adds metadata to otu table
 
-biomFRASER=MANUAL_INPUT_FILES/OTU_Table_wtaxa.biom
+# biomFRASER=MANUAL_INPUT_FILES/OTU_Table_wtaxa.biom
+biomFRASER=MANUAL_INPUT_FILES/OTU_Table_wtaxa_unassigned.biom
 fraserMF=MANUAL_INPUT_FILES/MF_Fraser18s_control_readded.txt
 tokeep=tokeep
 
@@ -21,6 +22,7 @@ filter_samples_from_otu_table.py -i OUTPUT_FILES/otu_table_nocon_temp.biom -o OU
 biom convert -i OUTPUT_FILES/otu_table_nocon1.biom --to-tsv --header-key taxonomy -o OUTPUT_FILES/otu_table_temp.txt
 
 touch OUTPUT_FILES/toDelete.txt
+grep "Unassigned" OUTPUT_FILES/otu_table_temp.txt > OUTPUT_FILES/toDelete.txt
 grep "70124" OUTPUT_FILES/otu_table_temp.txt >> OUTPUT_FILES/toDelete.txt
 grep "59829" OUTPUT_FILES/otu_table_temp.txt >> OUTPUT_FILES/toDelete.txt
 
